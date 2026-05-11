@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Modern Clinic | Management Suite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = { theme: { extend: { colors: { clinicRed: { 500: '#dc2626', 600: '#b91c1c' } }, fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] } } } }
+    </script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 8px 32px rgba(31, 38, 135, 0.03); }
+        .nav-link { transition: 0.2s; font-weight: 600; padding: 0.85rem 1.25rem; font-size: 13.5px; display: flex; align-items: center; gap: 12px; border-radius: 1rem; width: calc(100% - 2rem); margin: 0 1rem 6px 1rem; color: #64748b; }
+        .nav-link:hover { background: rgba(220, 38, 38, 0.05); color: #dc2626; }
+        .nav-link.active { background: rgba(220, 38, 38, 0.08); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.2); font-weight: 800; }
+
+        .tab-btn { padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 800; font-size: 11px; text-transform: uppercase; background: white; border: 1px solid #e2e8f0; color: #64748b; transition: 0.3s; width: 100%; text-align: center; }
+        @media (min-width: 768px) { .tab-btn { width: auto; } }
+        .tab-btn.active { background: #dc2626; color: white; border-color: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2); }
+
+        .sort-header { cursor: pointer; transition: 0.2s; position: relative; white-space: nowrap; }
+        .sort-active { color: #dc2626 !important; font-weight: 900; background: rgba(220, 38, 38, 0.03); }
+
+        .stat-card { border-radius: 1.5rem; padding: 1.5rem; transition: 0.3s; border: 1px solid transparent; }
+        @media (min-width: 768px) { .stat-card { border-radius: 2rem; padding: 2rem; } }
+        .stat-card:hover { transform: translateY(-5px); border-color: #dc2626; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+        .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
+        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .scale-up { animation: scaleUp 0.3s ease-out forwards; }
+
+        .table-wrapper::-webkit-scrollbar { height: 8px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        .cat-scroll::-webkit-scrollbar { width: 6px; }
+        .cat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .cat-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        /* Unified High-End Print Engine matching Takmeel ERP layout */
+        @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body > *:not(#print-area) { display: none !important; }
+            #print-area { display: block !important; width: 100%; margin: 0; padding: 0; }
+            body { background-color: white !important; }
+            @page { size: A4; margin: 15mm; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- SAFE DATA BRIDGE -->
+<div id="bridge" style="display:none;"
+     th:data-d="${dCount}" th:data-a="${aCount}" th:data-t="${totalCount}"
+     th:data-docs="${docLabels}" th:data-vals="${docValues}"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50/95 backdrop-blur-xl transition-all duration-500 p-4">
+    <div id="login-card" class="bg-white p-8 md:p-12 w-full max-w-sm rounded-[2rem] md:rounded-[3rem] border-t-8 border-clinicRed-600 shadow-2xl text-center">
+        <div class="w-16 h-16 md:w-20 md:h-20 bg-clinicRed-500 rounded-full mx-auto mb-6 flex items-center justify-center shadow-lg shadow-clinicRed-500/30">
+            <i class="fa-solid fa-staff-snake text-2xl md:text-3xl text-white"></i>
+        </div>
+        <h2 class="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tighter">Modern Clinic</h2>
+        <form onsubmit="handleLogin(event)" class="space-y-4 mt-8">
+            <input type="text" id="l-user" placeholder="Username" class="w-full p-4 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600" required>
+            <input type="password" id="l-pass" placeholder="Password" class="w-full p-4 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600" required>
+            <button type="submit" class="w-full bg-clinicRed-600 text-white font-black p-4 md:p-5 rounded-xl md:rounded-2xl shadow-xl hover:bg-clinicRed-700 transition-all uppercase tracking-widest">Sign In</button>
+        </form>
+    </div>
+</div>
+
+<div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[40] hidden lg:hidden backdrop-blur-sm transition-opacity"></div>
+
+<!-- SIDEBAR -->
+<aside id="sidebar" class="fixed lg:relative top-0 left-0 w-72 lg:w-80 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 z-[50] h-full shadow-2xl lg:shadow-sm transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+    <div class="p-6 md:p-10 border-b border-slate-100 flex justify-between items-center">
+        <div class="text-left">
+            <h1 class="font-black text-clinicRed-500 text-2xl md:text-3xl uppercase tracking-tighter">Modern Clinic</h1>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-1">Management Suite</p>
+        </div>
+        <button onclick="toggleSidebar()" class="lg:hidden text-slate-400 text-2xl hover:text-clinicRed-500"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <nav class="flex-1 py-4 md:py-8 overflow-y-auto">
+        <button onclick="switchView('dashboard')" id="link-dashboard" class="nav-link active view-link"><i class="fa-solid fa-chart-line w-6 text-center"></i> Dashboard</button>
+        <button onclick="switchView('registry')" id="link-registry" class="nav-link view-link"><i class="fa-solid fa-id-card-clip w-6 text-center"></i> Patient Registry</button>
+        <button onclick="switchView('estimator')" id="link-estimator" class="nav-link view-link"><i class="fa-solid fa-calculator w-6 text-center"></i> Package Estimator</button>
+        <button onclick="switchView('doctors')" id="link-doctors" class="nav-link view-link"><i class="fa-solid fa-user-doctor w-6 text-center"></i> Specialist List</button>
+    </nav>
+    <div class="p-4 md:p-6 border-t border-slate-100 space-y-2 md:space-y-3">
+        <label class="nav-link cursor-pointer text-emerald-600 hover:bg-emerald-50"><i class="fa-solid fa-file-import w-6"></i> Import Excel<input type="file" class="hidden" onchange="importExcel(this)"></label>
+        <a href="/api/patients/export" class="nav-link text-sky-600 hover:bg-sky-50"><i class="fa-solid fa-file-export w-6"></i> Export Data</a>
+        <button onclick="location.reload()" class="nav-link text-rose-500 hover:bg-rose-50"><i class="fa-solid fa-power-off w-6"></i> Logout</button>
+    </div>
+</aside>
+
+<!-- MAIN CONTENT -->
+<main class="flex-1 flex flex-col h-full overflow-hidden bg-[#f8fafc]">
+    <div class="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-200 shadow-sm z-30 flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-clinicRed-500 rounded-full flex items-center justify-center shadow-md"><i class="fa-solid fa-staff-snake text-white text-sm"></i></div>
+            <h1 class="font-black text-slate-900 text-lg uppercase tracking-tighter">Modern Clinic</h1>
+        </div>
+        <button onclick="toggleSidebar()" class="text-slate-600 hover:text-clinicRed-500 text-2xl transition-colors"><i class="fa-solid fa-bars"></i></button>
+    </div>
+
+    <!-- SCROLLABLE AREA -->
+    <div class="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12">
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="max-w-6xl mx-auto space-y-6 md:space-y-12 animate-fadeIn">
+            <header class="hidden md:block">
+                <h1 class="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">Analytics</h1>
+                <p class="text-clinicRed-600 font-bold text-xs md:text-sm uppercase tracking-widest mt-2">Clinic Performance Overview</p>
+            </header>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+                <div class="glass-panel stat-card border-l-4 md:border-l-0 md:border-t-4 border-slate-900 bg-white">
+                    <div class="flex justify-between items-start mb-2 md:mb-4"><p class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Total Registry</p><i class="fa-solid fa-users text-slate-200 text-xl md:text-2xl"></i></div>
+                    <h2 class="text-4xl md:text-6xl font-black text-slate-900 counter" th:data-target="${totalCount}">0</h2>
+                </div>
+                <div class="glass-panel stat-card border-l-4 md:border-l-0 md:border-t-4 border-clinicRed-500 bg-white">
+                    <div class="flex justify-between items-start mb-2 md:mb-4"><p class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Aesthetic Wing</p><i class="fa-solid fa-wand-magic-sparkles text-clinicRed-100 text-xl md:text-2xl"></i></div>
+                    <h2 class="text-4xl md:text-6xl font-black text-clinicRed-600 counter" th:data-target="${aCount}">0</h2>
+                </div>
+                <div class="glass-panel stat-card border-l-4 md:border-l-0 md:border-t-4 border-sky-500 bg-white">
+                    <div class="flex justify-between items-start mb-2 md:mb-4"><p class="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Dental Wing</p><i class="fa-solid fa-tooth text-sky-100 text-xl md:text-2xl"></i></div>
+                    <h2 class="text-4xl md:text-6xl font-black text-sky-600 counter" th:data-target="${dCount}">0</h2>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                <div class="glass-panel p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-white">
+                    <h3 class="text-base md:text-lg font-black text-slate-900 uppercase mb-6 md:mb-8 flex items-center gap-3"><span class="w-1.5 md:w-2 h-6 md:h-8 bg-clinicRed-600 rounded-full"></span> Department Split</h3>
+                    <div class="h-[250px] md:h-[300px] w-full relative"><canvas id="deptChart"></canvas></div>
+                </div>
+                <div class="glass-panel p-6 md:p-10 rounded-3xl md:rounded-[3rem] bg-white">
+                    <h3 class="text-base md:text-lg font-black text-slate-900 uppercase mb-6 md:mb-8 flex items-center gap-3"><span class="w-1.5 md:w-2 h-6 md:h-8 bg-sky-600 rounded-full"></span> Top Consultant Load</h3>
+                    <div class="h-[250px] md:h-[300px] w-full relative"><canvas id="docChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ESTIMATOR VIEW -->
+        <div id="view-estimator" class="hidden max-w-7xl mx-auto space-y-6 md:space-y-10 animate-fadeIn">
+            <header class="flex flex-col md:flex-row justify-between md:items-end gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">Estimator</h1>
+                    <p class="text-clinicRed-600 font-bold text-xs md:text-sm uppercase tracking-widest mt-2">Treatment Package Calculator</p>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 h-[calc(100vh-250px)] min-h-[600px]">
+                <div class="lg:col-span-7 glass-panel rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 bg-white flex flex-col">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <h3 class="text-xl font-black text-slate-900 uppercase tracking-tighter">Service Catalog</h3>
+                        <div class="relative w-full md:w-64">
+                            <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="cat-search" onkeyup="filterCatalog(this.value)" placeholder="Search services..." class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold focus:border-clinicRed-500 outline-none text-sm">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-y-auto cat-scroll pr-2" id="catalog-list">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 glass-panel rounded-3xl md:rounded-[2.5rem] p-6 md:p-8 bg-slate-900 flex flex-col text-white">
+                    <h3 class="text-xl font-black uppercase tracking-tighter mb-6 flex justify-between items-center">
+                        Current Estimate
+                        <span class="text-xs font-bold bg-white/10 px-3 py-1 rounded-full text-slate-300" id="est-item-count">0 Items</span>
+                    </h3>
+                    <div class="flex-1 overflow-y-auto cat-scroll mb-6 border-b border-white/10 pr-2" id="estimate-cart">
+                        <!-- Injected via JS -->
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between text-sm font-bold text-slate-400"><span>Subtotal:</span> <span id="est-subtotal" class="font-mono text-white">Rs 0</span></div>
+                        <div class="flex justify-between items-center text-sm font-bold text-slate-400">
+                            <span>Discount:</span>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="est-discount-val" value="0" min="0" oninput="calculateEstimate()" class="w-20 bg-white/10 border border-white/20 rounded-lg p-2 text-right outline-none text-white focus:border-clinicRed-500 transition-colors">
+                                <select id="est-discount-type" onchange="calculateEstimate()" class="bg-white/10 border border-white/20 rounded-lg p-2 outline-none text-white focus:border-clinicRed-500 transition-colors [&>option]:text-slate-900">
+                                    <option value="%">%</option>
+                                    <option value="PKR">Rs</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-2xl font-black text-white border-t border-white/10 pt-4 items-end">
+                            <span>Total:</span>
+                            <span id="est-total" class="font-mono text-clinicRed-500">Rs 0</span>
+                        </div>
+                        <div class="pt-4 flex gap-3">
+                            <button onclick="clearEstimate()" class="flex-1 py-4 bg-white/10 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-white/20 transition-colors"><i class="fa-solid fa-trash-can mr-2"></i> Clear</button>
+                            <button onclick="printEstimateUI()" class="flex-[2] py-4 bg-clinicRed-600 text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-clinicRed-700 transition-colors shadow-lg shadow-clinicRed-500/30"><i class="fa-solid fa-print mr-2"></i> Print Quote</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REGISTRY VIEW -->
+        <div id="view-registry" class="hidden max-w-6xl mx-auto space-y-6 md:space-y-10 animate-fadeIn">
+            <header class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+                <div class="flex-1">
+                    <h1 class="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">Registry</h1>
+                    <div class="flex flex-col md:flex-row md:items-center gap-4 mt-4 md:mt-8">
+                        <div class="flex gap-2 p-1 bg-slate-200/50 backdrop-blur-sm rounded-xl w-full md:w-auto">
+                            <button onclick="switchTab('dental')" id="btn-dental" class="tab-btn active flex-1 md:flex-none">Dental</button>
+                            <button onclick="switchTab('aesthetic')" id="btn-aesthetic" class="tab-btn flex-1 md:flex-none">Aesthetic</button>
+                        </div>
+                        <div class="relative w-full md:max-w-sm">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" onkeyup="filterTable(this.value)" placeholder="Search Name, Phone, Doctor..." class="w-full pl-11 pr-4 py-3 md:py-4 bg-white border border-slate-200 rounded-xl md:rounded-2xl font-semibold shadow-sm focus:border-clinicRed-500 outline-none transition-all text-sm">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('modal-reg').classList.remove('hidden')" class="w-full lg:w-auto bg-clinicRed-600 text-white px-8 md:px-10 py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-xl lg:hover:scale-105 transition-transform uppercase text-xs tracking-widest mt-2 lg:mt-0">
+                    <i class="fa-solid fa-plus mr-2"></i> Register New
+                </button>
+            </header>
+
+            <div id="tab-dental" class="tab-content animate-fadeIn">
+                <div class="glass-panel rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                    <div class="overflow-x-auto table-wrapper w-full">
+                        <table class="w-full text-left text-xs md:text-sm whitespace-nowrap min-w-[800px]">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr class="text-slate-500 font-black text-[9px] md:text-[10px] uppercase tracking-widest">
+                                <th class="py-4 md:py-6 px-4 md:px-8">Reg #</th>
+                                <th class="py-4 md:py-6 px-4 md:px-8 sort-header" onclick="sortTable(this, '.name-cell')">Patient Name <i class="fa-solid fa-sort ml-2 opacity-20"></i></th>
+                                <th class="py-4 md:py-6 px-4 md:px-8">Contact</th>
+                                <th class="py-4 md:py-6 px-4 md:px-8 sort-header" onclick="sortTable(this, '.doc-cell')">Consultant <i class="fa-solid fa-sort ml-2 opacity-20"></i></th>
+                                <th class="py-4 md:py-6 px-4 md:px-8 text-right">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                            <tr th:each="p : ${dental}" class="hover:bg-slate-50 transition-colors patient-row">
+                                <td class="py-4 md:py-6 px-4 md:px-8 font-mono text-[10px] md:text-xs text-slate-400" th:text="${p.regNo}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 font-black text-slate-800 md:text-base name-cell" th:text="${p.fullName}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 font-bold text-clinicRed-500 contact-cell" th:text="${p.phoneNumber}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 text-slate-500 font-semibold doc-cell" th:text="${p.consultantName}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 text-right flex justify-end gap-2">
+                                    <button type="button" th:data-id="${p.id}" onclick="openDossier(this.getAttribute('data-id'))" class="bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-700 transition-colors shadow-md text-xs font-bold uppercase tracking-widest"><i class="fa-solid fa-address-card mr-1"></i> Card</button>
+                                    <button type="button" th:data-id="${p.id}" onclick="deleteItem(this, '/api/patients/')" class="text-slate-300 hover:text-rose-600 transition-colors p-2"><i class="fa-solid fa-trash-can"></i></button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-aesthetic" class="tab-content hidden animate-fadeIn">
+                <div class="glass-panel rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                    <div class="overflow-x-auto table-wrapper w-full">
+                        <table class="w-full text-left text-xs md:text-sm whitespace-nowrap min-w-[800px]">
+                            <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr class="text-slate-500 font-black text-[9px] md:text-[10px] uppercase tracking-widest">
+                                <th class="py-4 md:py-6 px-4 md:px-8">Reg #</th>
+                                <th class="py-4 md:py-6 px-4 md:px-8 sort-header" onclick="sortTable(this, '.name-cell')">Patient Name <i class="fa-solid fa-sort ml-2 opacity-20"></i></th>
+                                <th class="py-4 md:py-6 px-4 md:px-8">Contact</th>
+                                <th class="py-4 md:py-6 px-4 md:px-8 sort-header" onclick="sortTable(this, '.doc-cell')">Consultant <i class="fa-solid fa-sort ml-2 opacity-20"></i></th>
+                                <th class="py-4 md:py-6 px-4 md:px-8 text-right">Actions</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                            <tr th:each="p : ${aesthetic}" class="hover:bg-slate-50 transition-colors patient-row">
+                                <td class="py-4 md:py-6 px-4 md:px-8 font-mono text-[10px] md:text-xs text-slate-400" th:text="${p.regNo}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 font-black text-slate-800 md:text-base name-cell" th:text="${p.fullName}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 font-bold text-clinicRed-500 contact-cell" th:text="${p.phoneNumber}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 text-slate-500 font-semibold doc-cell" th:text="${p.consultantName}"></td>
+                                <td class="py-4 md:py-6 px-4 md:px-8 text-right flex justify-end gap-2">
+                                    <button type="button" th:data-id="${p.id}" onclick="openDossier(this.getAttribute('data-id'))" class="bg-slate-900 text-white rounded-lg px-4 py-2 hover:bg-slate-700 transition-colors shadow-md text-xs font-bold uppercase tracking-widest"><i class="fa-solid fa-address-card mr-1"></i> Card</button>
+                                    <button type="button" th:data-id="${p.id}" onclick="deleteItem(this, '/api/patients/')" class="text-slate-300 hover:text-rose-600 transition-colors p-2"><i class="fa-solid fa-trash-can"></i></button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOCTORS VIEW -->
+        <div id="view-doctors" class="hidden max-w-4xl mx-auto space-y-6 md:space-y-10 animate-fadeIn">
+            <header class="flex flex-col md:flex-row justify-between md:items-end gap-4">
+                <div><h1 class="text-3xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter">Specialists</h1></div>
+                <button onclick="document.getElementById('modal-doc').classList.remove('hidden')" class="w-full md:w-auto bg-slate-900 text-white px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-black shadow-xl uppercase text-xs tracking-widest">Add Consultant</button>
+            </header>
+            <div class="glass-panel rounded-2xl md:rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+                <table class="w-full text-left text-xs md:text-sm">
+                    <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr class="text-slate-500 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><th class="py-4 md:py-6 px-6 md:px-10">Doctor Name</th><th class="py-4 md:py-6 px-6 md:px-10 text-right">Action</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50">
+                    <tr th:each="d : ${doctors}" class="hover:bg-slate-50 transition-colors">
+                        <td class="py-4 md:py-6 px-6 md:px-10 font-black text-slate-800 md:text-base" th:text="${d.name}"></td>
+                        <td class="py-4 md:py-6 px-6 md:px-10 text-right"><button type="button" th:data-id="${d.id}" onclick="deleteItem(this, '/api/doctors/')" class="text-slate-300 hover:text-rose-600 transition-colors p-2 md:px-3 md:py-2"><i class="fa-solid fa-trash-can"></i></button></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- PATIENT DOSSIER SLIDE-OVER (Digital Card & Accounting) -->
+<div id="card-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[160] hidden transition-opacity" onclick="closeDossier()"></div>
+<div id="card-panel" class="fixed top-0 right-0 w-full max-w-4xl h-full bg-[#f8fafc] shadow-2xl z-[170] transform translate-x-full transition-transform duration-500 ease-in-out flex flex-col rounded-l-3xl">
+    <!-- Dossier Header -->
+    <div class="bg-slate-900 p-8 flex justify-between items-start rounded-tl-3xl shadow-lg relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 text-white opacity-5 text-9xl"><i class="fa-solid fa-file-medical"></i></div>
+        <div class="relative z-10 text-white">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">Treatment Card <span id="cp-reg" class="bg-slate-800 px-2 py-1 rounded-md text-[10px]"></span></p>
+            <h2 id="cp-name" class="text-3xl font-black uppercase tracking-tighter">Loading...</h2>
+            <p class="text-sm font-semibold text-slate-300 mt-2"><i class="fa-solid fa-phone mr-2"></i><span id="cp-phone"></span> | <i class="fa-solid fa-user-doctor ml-2 mr-2"></i><span id="cp-doc"></span></p>
+        </div>
+        <div class="text-right relative z-10">
+            <button onclick="closeDossier()" class="text-slate-400 hover:text-white mb-4 text-2xl transition-colors"><i class="fa-solid fa-circle-xmark"></i></button>
+            <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-300">Net Balance</p>
+                <h3 id="cp-balance" class="text-3xl font-black text-white font-mono">0.00</h3>
+            </div>
+        </div>
+    </div>
+    <!-- Dossier Tabs -->
+    <div class="flex px-8 pt-6 gap-2 border-b border-slate-200">
+        <button onclick="switchDossierTab('clinical')" id="dbtn-clinical" class="dossier-btn font-black text-xs uppercase tracking-widest px-6 py-3 border-b-4 border-clinicRed-600 text-clinicRed-600 transition-colors">Clinical Profile</button>
+        <button onclick="switchDossierTab('ledger')" id="dbtn-ledger" class="dossier-btn font-black text-xs uppercase tracking-widest px-6 py-3 border-b-4 border-transparent text-slate-400 hover:text-slate-600 transition-colors">Financial Ledger</button>
+    </div>
+    <!-- Dossier Content -->
+    <div class="flex-1 overflow-y-auto p-8 relative">
+        <div id="dview-clinical" class="space-y-6">
+            <div class="grid grid-cols-3 gap-4 border-b border-slate-200 pb-6">
+                <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Age</label><input type="text" id="c-age" class="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-sm outline-none focus:border-clinicRed-500"></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sex</label><input type="text" id="c-sex" class="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-sm outline-none focus:border-clinicRed-500"></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Address</label><input type="text" id="c-address" class="w-full bg-white border border-slate-200 rounded-xl p-3 font-semibold text-sm outline-none focus:border-clinicRed-500"></div>
+            </div>
+            <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2"><i class="fa-solid fa-stethoscope"></i> Chief Complaint</label><textarea id="c-complaint" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-4 font-semibold text-sm outline-none focus:border-clinicRed-500"></textarea></div>
+            <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2"><i class="fa-solid fa-file-medical"></i> Medical History</label><textarea id="c-history" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-4 font-semibold text-sm outline-none focus:border-clinicRed-500"></textarea></div>
+            <div class="grid grid-cols-2 gap-6">
+                <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2"><i class="fa-solid fa-microscope"></i> Clinical Findings / Diagnosis</label><textarea id="c-diagnosis" rows="4" class="w-full bg-white border border-slate-200 rounded-xl p-4 font-semibold text-sm outline-none focus:border-clinicRed-500"></textarea></div>
+                <div><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-2"><i class="fa-solid fa-list-check"></i> Treatment Plan</label><textarea id="c-plan" rows="4" class="w-full bg-white border border-slate-200 rounded-xl p-4 font-semibold text-sm outline-none focus:border-clinicRed-500"></textarea></div>
+            </div>
+            <button onclick="saveClinicalNotes(this)" class="w-full bg-slate-900 text-white font-black uppercase text-xs tracking-widest py-4 rounded-xl shadow-lg hover:bg-slate-800 transition-all duration-300"><i class="fa-solid fa-floppy-disk mr-2"></i> Update Medical Record</button>
+        </div>
+        <div id="dview-ledger" class="hidden h-full flex flex-col">
+            <form onsubmit="addTransaction(event)" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 flex items-end gap-3 flex-wrap">
+                <div class="w-32"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Date</label><input type="date" id="t-date" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none" required></div>
+                <div class="w-20"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Tooth</label><input type="text" id="t-tooth" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none uppercase" placeholder="e.g. 14"></div>
+                <div class="flex-1 min-w-[200px]"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Treatment / Description</label><input type="text" id="t-treat" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none" required placeholder="Package Name"></div>
+                <div class="w-28"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Charges (Rs)</label><input type="number" id="t-charges" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none font-mono text-right text-clinicRed-600"></div>
+                <div class="w-28"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Received (Rs)</label><input type="number" id="t-received" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-bold outline-none font-mono text-right text-emerald-600"></div>
+                <button type="submit" class="bg-clinicRed-600 text-white rounded-lg p-3 shadow-md hover:bg-clinicRed-700 transition-all px-6 font-black text-xs uppercase tracking-widest w-full md:w-auto mt-2 md:mt-0 flex justify-center"><i class="fa-solid fa-plus"></i></button>
+            </form>
+            <div class="flex-1 overflow-hidden bg-white border border-slate-200 rounded-2xl flex flex-col">
+                <div class="overflow-y-auto flex-1">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 sticky top-0 border-b border-slate-200 shadow-sm z-10"><tr class="text-slate-500 font-black uppercase tracking-widest text-[9px]"><th class="p-4">Date</th><th class="p-4">Tooth</th><th class="p-4 w-1/3">Treatment</th><th class="p-4 text-right">Charges</th><th class="p-4 text-right">Received</th><th class="p-4 text-right">Bal.</th><th class="p-4 text-center">Receipt</th></tr></thead>
+                        <tbody id="ledger-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-reg" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl md:rounded-[3rem] p-6 md:p-12 border-t-[8px] md:border-t-[12px] border-clinicRed-600 shadow-2xl overflow-y-auto max-h-[90vh] scale-up">
+        <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase mb-6 md:mb-8 text-center tracking-tighter">Patient Enrollment</h3>
+        <form onsubmit="handleSavePatient(event)" class="space-y-3 md:space-y-4">
+            <input type="text" id="m-reg" placeholder="Internal Registration #" class="w-full p-4 md:p-5 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600 text-sm md:text-base">
+            <input type="text" id="m-name" placeholder="Full Patient Name" class="w-full p-4 md:p-5 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600 text-sm md:text-base" required>
+            <input type="text" id="m-phone" placeholder="Contact Number" class="w-full p-4 md:p-5 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600 text-sm md:text-base" required>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                <select id="m-type" class="w-full p-4 md:p-5 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600 text-sm md:text-base"><option value="DENTAL">Dental Dept</option><option value="AESTHETIC">Aesthetic Dept</option></select>
+                <select id="m-consultant" class="w-full p-4 md:p-5 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-clinicRed-600 text-sm md:text-base"><option value="">Select Doctor</option><option th:each="d : ${doctors}" th:value="${d.name}" th:text="${d.name}"></option></select>
+            </div>
+            <div class="flex gap-3 md:gap-4 pt-4 md:pt-6"><button type="button" onclick="document.getElementById('modal-reg').classList.add('hidden')" class="flex-1 py-4 md:py-5 bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest text-slate-600">Cancel</button><button type="submit" class="flex-1 py-4 md:py-5 bg-clinicRed-600 text-white hover:bg-clinicRed-700 transition-colors rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg shadow-clinicRed-500/30">Enrol</button></div>
+        </form>
+    </div>
+</div>
+
+<div id="modal-doc" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl md:rounded-[3rem] p-6 md:p-12 border-t-[8px] md:border-t-[12px] border-slate-900 shadow-2xl overflow-y-auto max-h-[90vh] scale-up">
+        <h3 class="text-2xl md:text-3xl font-black text-slate-900 uppercase mb-6 md:mb-8 text-center tracking-tighter">Add Consultant</h3>
+        <form onsubmit="handleSaveDoctor(event)" class="space-y-4">
+            <input type="text" id="d-name" placeholder="Doctor Name (e.g. DR. BASIT)" class="w-full p-4 md:p-5 rounded-xl md:rounded-2xl bg-slate-50 border border-slate-200 font-bold outline-none focus:border-slate-900 text-sm md:text-base" required>
+            <div class="flex gap-3 md:gap-4 pt-4 md:pt-6"><button type="button" onclick="document.getElementById('modal-doc').classList.add('hidden')" class="flex-1 py-4 md:py-5 bg-slate-100 hover:bg-slate-200 transition-colors rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest text-slate-600">Cancel</button><button type="submit" class="flex-1 py-4 md:py-5 bg-slate-900 text-white hover:bg-slate-800 transition-colors rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg shadow-slate-900/30">Save</button></div>
+        </form>
+    </div>
+</div>
+
+<!-- PRINT ENGINE CONTAINER -->
+<div id="print-area" class="hidden"></div>
+
+<script th:inline="javascript">
+    let currentPatientId = null;
+    let deptChart = null, docChart = null;
+
+    // --- ESTIMATOR DATA ---
+    const serviceCatalog = [
+        { id: 1, name: 'Scaling & Polishing', category: 'Dental', price: 5000 },
+        { id: 2, name: 'Root Canal Treatment (RCT)', category: 'Dental', price: 15000 },
+        { id: 3, name: 'Tooth Extraction', category: 'Dental', price: 4000 },
+        { id: 4, name: 'Dental Implant', category: 'Dental', price: 65000 },
+        { id: 5, name: 'Braces (Orthodontics)', category: 'Dental', price: 120000 },
+        { id: 6, name: 'Teeth Whitening', category: 'Dental', price: 12000 },
+        { id: 7, name: 'Botox (Per Unit)', category: 'Aesthetic', price: 1500 },
+        { id: 8, name: 'Dermal Fillers', category: 'Aesthetic', price: 25000 },
+        { id: 9, name: 'PRP Hair Treatment', category: 'Aesthetic', price: 8000 },
+        { id: 10, name: 'Hydrafacial', category: 'Aesthetic', price: 6000 },
+        { id: 11, name: 'Laser Hair Removal', category: 'Aesthetic', price: 10000 },
+        { id: 12, name: 'Acne Scar Treatment', category: 'Aesthetic', price: 15000 }
+    ];
+    let estimateCart = [];
+
+    // --- NAVIGATION ---
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebar-overlay').classList.toggle('hidden');
+    }
+
+    function switchView(v) {
+        document.querySelectorAll('.view-link').forEach(l => l.classList.remove('active'));
+        document.getElementById('link-'+v).classList.add('active');
+        ['dashboard', 'registry', 'doctors', 'estimator'].forEach(x => {
+            const el = document.getElementById('view-'+x);
+            if(el) el.classList.toggle('hidden', v !== x);
+        });
+
+        if(v === 'dashboard') initDashboard();
+        if(v === 'estimator') renderCatalog();
+
+        if(window.innerWidth < 1024 && !document.getElementById('sidebar').classList.contains('-translate-x-full')) toggleSidebar();
+    }
+
+    function switchTab(t) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-'+t).classList.remove('hidden');
+        document.getElementById('btn-'+t).classList.add('active');
+    }
+
+    // --- ESTIMATOR LOGIC ---
+    function renderCatalog(filter = '') {
+        const list = document.getElementById('catalog-list');
+        list.innerHTML = '';
+        serviceCatalog.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()) || s.category.toLowerCase().includes(filter.toLowerCase()))
+            .forEach(s => {
+                const isDental = s.category === 'Dental';
+                list.innerHTML += `
+                    <div class="border border-slate-100 bg-slate-50 p-4 rounded-2xl flex justify-between items-center hover:border-[${isDental ? '#0ea5e9' : '#dc2626'}] transition-colors shadow-sm cursor-pointer" onclick="addToEstimate(${s.id})">
+                        <div>
+                            <span class="text-[9px] font-black text-white px-2 py-1 rounded bg-${isDental ? 'sky' : 'clinicRed'}-500 uppercase tracking-widest">${s.category}</span>
+                            <h4 class="font-bold text-slate-800 text-sm mt-2 leading-tight">${s.name}</h4>
+                            <p class="text-xs font-mono font-bold text-slate-500 mt-1">Rs ${s.price.toLocaleString()}</p>
+                        </div>
+                        <button class="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-900 hover:text-white transition-colors shadow-sm"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                `;
+            });
+    }
+
+    function filterCatalog(val) { renderCatalog(val); }
+
+    function addToEstimate(id) {
+        const service = serviceCatalog.find(s => s.id === id);
+        const existing = estimateCart.find(i => i.id === id);
+        if(existing) existing.qty++;
+        else estimateCart.push({...service, qty: 1});
+        renderEstimateCart();
+    }
+
+    function removeFromEstimate(index) { estimateCart.splice(index, 1); renderEstimateCart(); }
+
+    function updateEstQty(index, delta) {
+        estimateCart[index].qty += delta;
+        if(estimateCart[index].qty <= 0) estimateCart.splice(index, 1);
+        renderEstimateCart();
+    }
+
+    function renderEstimateCart() {
+        const cartEl = document.getElementById('estimate-cart');
+        document.getElementById('est-item-count').innerText = estimateCart.reduce((sum, i) => sum + i.qty, 0) + ' Items';
+
+        if(estimateCart.length === 0) {
+            cartEl.innerHTML = '<div class="text-center text-slate-500 font-bold py-10 uppercase text-xs tracking-widest flex flex-col items-center gap-3"><i class="fa-solid fa-basket-shopping text-3xl opacity-50"></i>Estimate Cart is empty</div>';
+        } else {
+            cartEl.innerHTML = estimateCart.map((item, i) => `
+                <div class="flex justify-between items-center py-4 border-b border-white/10 last:border-0">
+                    <div class="flex-1 pr-4">
+                        <h5 class="text-sm font-bold text-white leading-tight">${item.name}</h5>
+                        <p class="text-[10px] font-mono font-bold text-slate-400 mt-1">Rs ${item.price.toLocaleString()} x ${item.qty}</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center bg-white/10 rounded-lg overflow-hidden border border-white/10">
+                            <button onclick="updateEstQty(${i}, -1)" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition-colors text-white"><i class="fa-solid fa-minus text-xs"></i></button>
+                            <span class="w-6 text-center font-bold text-xs text-white">${item.qty}</span>
+                            <button onclick="updateEstQty(${i}, 1)" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 transition-colors text-white"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                        <span class="font-mono font-bold text-white w-20 text-right">Rs ${(item.price * item.qty).toLocaleString()}</span>
+                        <button onclick="removeFromEstimate(${i})" class="text-slate-500 hover:text-rose-500 ml-2 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        calculateEstimate();
+    }
+
+    function calculateEstimate() {
+        const subtotal = estimateCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const discountVal = parseFloat(document.getElementById('est-discount-val').value) || 0;
+        const discountType = document.getElementById('est-discount-type').value;
+
+        let discountAmt = 0;
+        if (discountType === '%') discountAmt = subtotal * (Math.min(discountVal, 100) / 100);
+        else discountAmt = Math.min(discountVal, subtotal);
+
+        const total = subtotal - discountAmt;
+
+        document.getElementById('est-subtotal').innerText = 'Rs ' + subtotal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+        document.getElementById('est-total').innerText = 'Rs ' + total.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    }
+
+    function clearEstimate() {
+        estimateCart = [];
+        document.getElementById('est-discount-val').value = 0;
+        renderEstimateCart();
+    }
+
+    // --- ENHANCED PRINT ENGINE ---
+    function printEstimateUI() {
+        if(estimateCart.length === 0) return alert("Please add items to the cart first.");
+
+        const dateStr = new Date().toLocaleDateString();
+        const subtotal = document.getElementById('est-subtotal').innerText;
+        const total = document.getElementById('est-total').innerText;
+        const discountVal = parseFloat(document.getElementById('est-discount-val').value) || 0;
+        const discountType = document.getElementById('est-discount-type').value;
+        const discountStr = discountVal > 0 ? (discountType === '%' ? `${discountVal}%` : `Rs ${discountVal}`) : '0';
+
+        let itemsHtml = estimateCart.map(item => `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 0.75rem 0; font-weight: bold; color: #0f172a; font-size: 0.9rem;">${item.name}</td>
+                <td style="padding: 0.75rem 0; text-align: center; color: #0f172a; font-size: 0.9rem;">${item.qty}</td>
+                <td style="padding: 0.75rem 0; text-align: right; color: #0f172a; font-size: 0.9rem;">Rs ${item.price.toLocaleString()}</td>
+                <td style="padding: 0.75rem 0; text-align: right; font-weight: bold; color: #0f172a; font-size: 0.9rem;">Rs ${(item.price * item.qty).toLocaleString()}</td>
+            </tr>
+        `).join('');
+
+        document.getElementById('print-area').innerHTML = `
+            <div style="max-width: 800px; margin: 0 auto; font-family: sans-serif; color: #0f172a; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #b91c1c; padding-bottom: 1.5rem; margin-bottom: 2rem;">
+                    <div>
+                        <h1 style="font-size: 2.5rem; font-weight: 900; color: #b91c1c; margin: 0; text-transform: uppercase; letter-spacing: -1px;">Modern Clinic</h1>
+                        <p style="font-size: 0.85rem; font-weight: bold; color: #64748b; margin: 0.25rem 0 0 0; text-transform: uppercase; letter-spacing: 0.1em;">Treatment Cost Estimate</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <h2 style="font-size: 1.5rem; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase;">Quotation</h2>
+                        <p style="font-size: 0.9rem; font-weight: bold; color: #64748b; margin: 0.25rem 0 0 0;">Date: ${dateStr}</p>
+                    </div>
+                </div>
+
+                <table style="width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 2rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #0f172a;">
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a;">Service / Package</th>
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a; text-align: center;">Qty</th>
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a; text-align: right;">Unit Price</th>
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a; text-align: right;">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml}
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 4rem;">
+                    <table style="width: 320px; text-align: right; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 0.5rem 0; font-size: 0.85rem; font-weight: bold; color: #64748b; text-transform: uppercase;">Subtotal</td>
+                            <td style="padding: 0.5rem 0; font-weight: bold; color: #0f172a; font-size: 1rem;">${subtotal}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.5rem 0; font-size: 0.85rem; font-weight: bold; color: #dc2626; text-transform: uppercase;">Discount Applied</td>
+                            <td style="padding: 0.5rem 0; font-weight: bold; color: #dc2626; font-size: 1rem;">- ${discountStr}</td>
+                        </tr>
+                        <tr style="border-top: 2px solid #0f172a;">
+                            <td style="padding: 0.75rem 0; font-size: 0.95rem; font-weight: 900; color: #0f172a; text-transform: uppercase;">Estimated Total</td>
+                            <td style="padding: 0.75rem 0; font-size: 1.25rem; font-weight: 900; color: #b91c1c;">${total}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4rem;">
+                    <div>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0; font-weight: bold;">Note: This is an estimate only. Actual costs may vary.</p>
+                        <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.25rem 0 0 0;">Generated by Modern Clinic Enterprise</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        window.print();
+    }
+
+    function printReceipt(date, treat, tooth, charges, rec, bal) {
+        const pName = document.getElementById('cp-name').innerText;
+        const pReg = document.getElementById('cp-reg').innerText;
+        const pDoc = document.getElementById('cp-doc').innerText;
+
+        document.getElementById('print-area').innerHTML = `
+            <div style="max-width: 800px; margin: 0 auto; font-family: sans-serif; color: #0f172a; padding: 20px;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #b91c1c; padding-bottom: 1.5rem; margin-bottom: 2rem;">
+                    <div>
+                        <h1 style="font-size: 2.5rem; font-weight: 900; color: #b91c1c; margin: 0; text-transform: uppercase; letter-spacing: -1px;">Modern Clinic</h1>
+                        <p style="font-size: 0.85rem; font-weight: bold; color: #64748b; margin: 0.25rem 0 0 0; text-transform: uppercase; letter-spacing: 0.1em;">Dental & Aesthetics Center</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <h2 style="font-size: 1.5rem; font-weight: 900; color: #0f172a; margin: 0; text-transform: uppercase;">Official Receipt</h2>
+                        <p style="font-size: 0.9rem; font-weight: bold; color: #64748b; margin: 0.25rem 0 0 0;">Date: ${date}</p>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <p style="font-size: 0.75rem; color: #64748b; text-transform: uppercase; font-weight: 800; margin: 0 0 0.5rem 0;">Entity Details:</p>
+                    <h3 style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0;">${pName}</h3>
+                    <p style="font-size: 0.9rem; font-weight: 600; color: #0f172a; margin: 0.25rem 0 0 0;">Reg #: ${pReg}</p>
+                    <p style="font-size: 0.9rem; font-weight: 600; color: #0f172a; margin: 0.25rem 0 0 0;">Consultant: ${pDoc}</p>
+                </div>
+
+                <table style="width: 100%; text-align: left; border-collapse: collapse; margin-bottom: 2rem;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #0f172a;">
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a;">Description</th>
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a; text-align: center;">Tooth</th>
+                            <th style="padding: 0.75rem 0; font-size: 0.85rem; text-transform: uppercase; color: #0f172a; text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 1.25rem 0; font-weight: bold; color: #0f172a; font-size: 1rem;">${treat}</td>
+                            <td style="padding: 1.25rem 0; text-align: center; color: #0f172a; font-size: 1rem;">${tooth}</td>
+                            <td style="padding: 1.25rem 0; text-align: right; font-weight: bold; color: #0f172a; font-size: 1.1rem;">Rs ${parseFloat(charges).toLocaleString()}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 4rem;">
+                    <table style="width: 320px; text-align: right; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 0.5rem 0; font-size: 0.85rem; font-weight: bold; color: #64748b; text-transform: uppercase;">Total Charges</td>
+                            <td style="padding: 0.5rem 0; font-weight: bold; color: #0f172a; font-size: 1.1rem;">Rs ${parseFloat(charges).toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.5rem 0; font-size: 0.85rem; font-weight: bold; color: #64748b; text-transform: uppercase;">Amount Received</td>
+                            <td style="padding: 0.5rem 0; font-weight: bold; color: #10b981; font-size: 1.1rem;">Rs ${parseFloat(rec).toLocaleString()}</td>
+                        </tr>
+                        <tr style="border-top: 2px solid #0f172a;">
+                            <td style="padding: 0.75rem 0; font-size: 0.95rem; font-weight: 900; color: #0f172a; text-transform: uppercase;">Remaining Balance</td>
+                            <td style="padding: 0.75rem 0; font-size: 1.25rem; font-weight: 900; color: #b91c1c;">Rs ${parseFloat(bal).toLocaleString()}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4rem;">
+                    <div>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0; font-weight: bold;">Thank you for choosing Modern Clinic.</p>
+                        <p style="font-size: 0.75rem; color: #94a3b8; margin: 0.25rem 0 0 0;">Generated by Modern Clinic Enterprise | Printed on ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="width: 200px; border-bottom: 1px solid #0f172a; margin-bottom: 0.5rem;"></div>
+                        <p style="font-size: 0.8rem; font-weight: bold; color: #0f172a; text-transform: uppercase; margin: 0;">Authorized Signature</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        window.print();
+    }
+
+    // --- CORE LOGIC ---
+    function filterTable(q) {
+        const query = q.toLowerCase();
+        document.querySelectorAll('.patient-row').forEach(r => {
+            const name = r.querySelector('.name-cell').innerText.toLowerCase();
+            const phone = r.querySelector('.contact-cell').innerText.toLowerCase();
+            const doc = r.querySelector('.doc-cell').innerText.toLowerCase();
+            r.style.display = (name.includes(query) || phone.includes(query) || doc.includes(query)) ? '' : 'none';
+        });
+    }
+
+    let sortOrder = 1;
+    function sortTable(header, selector) {
+        const tbody = header.closest('table').querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        header.closest('table').querySelectorAll('.sort-header').forEach(h => {
+            h.classList.remove('sort-active');
+            const icon = h.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-sort ml-2 opacity-20';
+            if (h !== header) h.removeAttribute('data-order');
+        });
+        header.classList.add('sort-active');
+        let currentOrder = header.getAttribute('data-order') === 'asc' ? -1 : 1;
+        header.setAttribute('data-order', currentOrder === 1 ? 'asc' : 'desc');
+        rows.sort((a,b) => {
+            const valA = a.querySelector(selector).innerText;
+            const valB = b.querySelector(selector).innerText;
+            return valA.localeCompare(valB) * currentOrder;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+        const icon = header.querySelector('i');
+        if (icon) icon.className = currentOrder === 1 ? 'fa-solid fa-sort-up ml-2 opacity-100' : 'fa-solid fa-sort-down ml-2 opacity-100';
+    }
+
+    function initDashboard() {
+        const bridge = document.getElementById('bridge');
+        if (!bridge) return;
+
+        const d = +bridge.getAttribute('data-d') || 0;
+        const a = +bridge.getAttribute('data-a') || 0;
+        const rawLabels = bridge.getAttribute('data-docs');
+        const rawVals = bridge.getAttribute('data-vals');
+        const dLabels = rawLabels ? rawLabels.split(',') : [];
+        const dValues = rawVals ? rawVals.split(',').map(Number) : [];
+
+        document.querySelectorAll('.counter').forEach(c => {
+            const target = +(c.getAttribute('data-target') || 0);
+            if(target === 0) { c.innerText = "0"; return; }
+            let curr = 0; const inc = Math.max(1, target / 30);
+            const up = () => {
+                if(curr < target) { curr = Math.min(target, Math.ceil(curr + inc)); c.innerText = curr; setTimeout(up, 30); }
+                else c.innerText = target;
+            }; up();
+        });
+
+        const isMobile = window.innerWidth < 768;
+        const legendPos = isMobile ? 'bottom' : 'right';
+
+        if (deptChart) deptChart.destroy();
+        const ctxDept = document.getElementById('deptChart');
+        if (ctxDept) {
+            deptChart = new Chart(ctxDept, {
+                type: 'doughnut',
+                data: { labels: ['Dental', 'Aesthetic'], datasets: [{ data: [d, a], backgroundColor: ['#0ea5e9', '#dc2626'], borderWidth: 0, hoverOffset: isMobile ? 10 : 20 }] },
+                options: { cutout: '70%', plugins: { legend: { position: legendPos, labels: { usePointStyle: true, padding: 15, font: { weight: 'bold', size: isMobile ? 10 : 12 } } } }, animation: { animateScale: true, duration: 1500 }, maintainAspectRatio: false }
+            });
+        }
+
+        if (docChart) docChart.destroy();
+        const ctxDoc = document.getElementById('docChart');
+        if (ctxDoc) {
+            docChart = new Chart(ctxDoc, {
+                type: 'bar',
+                data: { labels: dLabels, datasets: [{ data: dValues, backgroundColor: '#1e293b', borderRadius: isMobile ? 6 : 10, barThickness: isMobile ? 20 : 30 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false }, ticks: { font: { size: isMobile ? 10 : 12 } } }, x: { grid: { display: false }, ticks: { font: { size: isMobile ? 9 : 12 }, maxRotation: 45, minRotation: 45 } } }, animation: { duration: 1500, easing: 'easeOutBounce' } }
+            });
+        }
+    }
+
+    // --- DOSSIER & ACCOUNTING ENGINE ---
+    async function openDossier(id) {
+        currentPatientId = id;
+        document.getElementById('card-overlay').classList.remove('hidden');
+        document.getElementById('card-panel').classList.remove('translate-x-full');
+
+        const res = await fetch('/api/patients/' + id);
+        const p = await res.json();
+
+        document.getElementById('cp-name').innerText = p.fullName || 'N/A';
+        document.getElementById('cp-reg').innerText = p.regNo || 'NO-REG';
+        document.getElementById('cp-phone').innerText = p.phoneNumber || 'N/A';
+        document.getElementById('cp-doc').innerText = p.consultantName || 'N/A';
+        updateBalanceColor(p.totalBalance || 0);
+
+        document.getElementById('c-age').value = p.age || '';
+        document.getElementById('c-sex').value = p.gender || '';
+        document.getElementById('c-address').value = p.address || '';
+        document.getElementById('c-complaint').value = p.chiefComplaint || '';
+        document.getElementById('c-history').value = p.medicalHistory || '';
+        document.getElementById('c-diagnosis').value = p.clinicalFindings || p.diagnosis || '';
+        document.getElementById('c-plan').value = p.treatmentPlan || '';
+
+        document.getElementById('t-date').valueAsDate = new Date();
+        loadTransactions();
+    }
+
+    function closeDossier() {
+        document.getElementById('card-overlay').classList.add('hidden');
+        document.getElementById('card-panel').classList.add('translate-x-full');
+        currentPatientId = null;
+    }
+
+    function switchDossierTab(tab) {
+        document.querySelectorAll('.dossier-btn').forEach(b => { b.classList.remove('border-clinicRed-600', 'text-clinicRed-600'); b.classList.add('border-transparent', 'text-slate-400'); });
+        const activeBtn = document.getElementById('dbtn-'+tab);
+        activeBtn.classList.remove('border-transparent', 'text-slate-400');
+        activeBtn.classList.add('border-clinicRed-600', 'text-clinicRed-600');
+        document.getElementById('dview-clinical').classList.toggle('hidden', tab !== 'clinical');
+        document.getElementById('dview-ledger').classList.toggle('hidden', tab !== 'ledger');
+    }
+
+    function updateBalanceColor(bal) {
+        const bEl = document.getElementById('cp-balance');
+        bEl.innerText = parseFloat(bal).toLocaleString('en-US', {minimumFractionDigits: 2});
+        if(bal > 0) bEl.classList.add('text-clinicRed-400'); else bEl.classList.remove('text-clinicRed-400');
+    }
+
+    async function saveClinicalNotes(btn) {
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Saving...';
+        btn.disabled = true;
+
+        const payload = {
+            age: document.getElementById('c-age').value,
+            gender: document.getElementById('c-sex').value,
+            address: document.getElementById('c-address').value,
+            chiefComplaint: document.getElementById('c-complaint').value,
+            medicalHistory: document.getElementById('c-history').value,
+            clinicalFindings: document.getElementById('c-diagnosis').value,
+            diagnosis: document.getElementById('c-diagnosis').value,
+            treatmentPlan: document.getElementById('c-plan').value
+        };
+
+        try {
+            const res = await fetch(`/api/patients/${currentPatientId}/notes`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if(res.ok) {
+                btn.classList.replace('bg-slate-900', 'bg-emerald-600');
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Saved';
+            } else throw new Error();
+        } catch(e) {
+            btn.classList.replace('bg-slate-900', 'bg-red-600');
+            btn.innerHTML = '<i class="fa-solid fa-xmark mr-2"></i> Error';
+        }
+
+        setTimeout(() => {
+            btn.classList.remove('bg-emerald-600', 'bg-red-600');
+            btn.classList.add('bg-slate-900');
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }, 2000);
+    }
+
+    async function loadTransactions() {
+        const res = await fetch(`/api/patients/${currentPatientId}/transactions`);
+        const txs = await res.json();
+        const tbody = document.getElementById('ledger-body');
+        tbody.innerHTML = '';
+        txs.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            tr.innerHTML = `
+                <td class="p-4 font-mono">${t.date}</td>
+                <td class="p-4 font-bold text-slate-800">${t.toothNo || '-'}</td>
+                <td class="p-4 text-slate-600 font-semibold truncate max-w-[200px]" title="${t.treatment}">${t.treatment}</td>
+                <td class="p-4 text-right font-mono text-clinicRed-600 font-bold">${t.charges.toLocaleString()}</td>
+                <td class="p-4 text-right font-mono text-emerald-600 font-bold">${t.received.toLocaleString()}</td>
+                <td class="p-4 text-right font-mono font-black text-slate-900">${t.balance.toLocaleString()}</td>
+                <td class="p-4 text-center"><button onclick="printReceipt('${t.date}','${t.treatment.replace(/'/g, "\\'")}','${t.toothNo || '-'}', ${t.charges}, ${t.received}, ${t.balance})" class="bg-slate-900 text-white rounded px-3 py-1 hover:bg-slate-700 transition-colors text-[10px] uppercase font-bold tracking-widest"><i class="fa-solid fa-print"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function addTransaction(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const origIcon = btn.innerHTML;
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+
+        const payload = {
+            patientId: currentPatientId,
+            date: document.getElementById('t-date').value,
+            toothNo: document.getElementById('t-tooth').value,
+            treatment: document.getElementById('t-treat').value,
+            charges: parseFloat(document.getElementById('t-charges').value) || 0,
+            received: parseFloat(document.getElementById('t-received').value) || 0
+        };
+
+        try {
+            const res = await fetch('/api/transactions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if(res.ok) {
+                await loadTransactions();
+                const pRes = await fetch('/api/patients/' + currentPatientId);
+                const p = await pRes.json();
+                updateBalanceColor(p.totalBalance);
+
+                document.getElementById('t-tooth').value = '';
+                document.getElementById('t-treat').value = '';
+                document.getElementById('t-charges').value = 0;
+                document.getElementById('t-received').value = 0;
+
+                btn.classList.replace('bg-clinicRed-600', 'bg-emerald-500');
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else throw new Error();
+        } catch(err) {
+            btn.classList.replace('bg-clinicRed-600', 'bg-red-600');
+            btn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+        }
+
+        setTimeout(() => {
+            btn.classList.remove('bg-emerald-500', 'bg-red-600');
+            btn.classList.add('bg-clinicRed-600');
+            btn.innerHTML = origIcon;
+            btn.disabled = false;
+        }, 1500);
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username: document.getElementById('l-user').value, password: document.getElementById('l-pass').value}) });
+        if(res.ok) { document.getElementById('login-screen').classList.add('hidden'); initDashboard(); }
+        else { const card = document.getElementById('login-card'); card.classList.add('animate-shake'); setTimeout(() => card.classList.remove('animate-shake'), 400); }
+    }
+
+    async function handleSavePatient(e) {
+        e.preventDefault();
+        await fetch('/api/patients', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({
+                regNo: document.getElementById('m-reg').value, fullName: document.getElementById('m-name').value, phoneNumber: document.getElementById('m-phone').value,
+                type: document.getElementById('m-type').value, consultantName: document.getElementById('m-consultant').value, date: new Date().toLocaleDateString()
+            })});
+        location.reload();
+    }
+
+    async function handleSaveDoctor(e) {
+        e.preventDefault();
+        await fetch('/api/doctors', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name: document.getElementById('d-name').value, specialization: "Consultant" })});
+        location.reload();
+    }
+
+    async function deleteItem(btn, url) {
+        if(confirm('Delete this record?')) {
+            await fetch(url + btn.getAttribute('data-id'), {method:'DELETE'});
+            location.reload();
+        }
+    }
+
+    async function importExcel(input) {
+        if(!input.files[0]) return;
+        const fd = new FormData(); fd.append("file", input.files[0]);
+        const res = await fetch('/api/patients/import', { method:'POST', body: fd });
+        if(res.ok) location.reload(); else alert("Import failed.");
+    }
+
+    window.onload = () => {
+        if(document.getElementById('login-screen').classList.contains('hidden')) initDashboard();
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 1024) {
+                document.getElementById('sidebar').classList.remove('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+            } else {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+            }
+        });
+    };
+</script>
+</body>
+</html>
