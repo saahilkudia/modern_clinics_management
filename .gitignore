@@ -1,5 +1,22 @@
-# Project exclude paths
-/target/src/main/resources/serviceAccountKey.json
-
-src/main/resources/serviceAccountKey.json
+# Build
 target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Secrets
+.env
+.env.*
+src/main/resources/serviceAccountKey.json
+**/serviceAccountKey.json
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
