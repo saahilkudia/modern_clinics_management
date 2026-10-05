@@ -39,26 +39,37 @@ public class Services {
 
     private static final Map<String, String> ALIASES = new HashMap<>();
     static {
-        ALIASES.put("KAREEM", "Dr. Abdul Kareem Padhiar");
-        ALIASES.put("KARIM", "Dr. Abdul Kareem Padhiar");
+        // DR. ABDUL KAREEM PADHIAR
+        ALIASES.put("KAREEM", "DR. ABDUL KAREEM PADHIAR");
+        ALIASES.put("KARIM", "DR. ABDUL KAREEM PADHIAR");
+        ALIASES.put("C/O HAMZA", "DR. ABDUL KAREEM PADHIAR");
+        ALIASES.put("AQSA", "DR. ABDUL KAREEM PADHIAR");
 
-        ALIASES.put("BASIT", "Dr. Abdul Basit Padhiar");
+        // DR. ABDUL BASIT PADHIAR
+        ALIASES.put("BASIT", "DR. ABDUL BASIT PADHIAR");
 
-        ALIASES.put("JAINE", "Dr. Jainee Watt");
-        ALIASES.put("JAINEE", "Dr. Jainee Watt");
-        ALIASES.put("JAINI", "Dr. Jainee Watt");
+        // DR. JAINEE WATT
+        ALIASES.put("JAINE", "DR. JAINEE WATT");
+        ALIASES.put("JAINEE", "DR. JAINEE WATT");
+        ALIASES.put("JAINI", "DR. JAINEE WATT");
 
-        ALIASES.put("TAYYEBA", "Dr. Tayyeba Fatima");
-        ALIASES.put("TAYYABA", "Dr. Tayyeba Fatima");
+        // DR. TAYYEBA FATIMA
+        ALIASES.put("TAYYEBA", "DR. TAYYEBA FATIMA");
+        ALIASES.put("TAYYABA", "DR. TAYYEBA FATIMA");
 
-        ALIASES.put("RUAAZ", "Dr. Ruaaz Aziz");
-        ALIASES.put("RUAAZ AZIZ", "Dr. Ruaaz Aziz");
+        // DR. RUAZ AHMED
+        ALIASES.put("RUAZ", "DR. RUAZ AHMED");
+        ALIASES.put("RUAAZ", "DR. RUAZ AHMED");
+        ALIASES.put("RUAZ AHMED", "DR. RUAZ AHMED");
+        ALIASES.put("RUAAZ AZIZ", "DR. RUAZ AHMED");
 
-        ALIASES.put("HADIQA", "Dr. Hadiqa");
+        // DR. HADIQA
+        ALIASES.put("HADIQA", "DR. HADIQA");
 
-        ALIASES.put("ZUBIA", "Dr. Zubia Razzak");
-        ALIASES.put("ZOOBIA", "Dr. Zubia Razzak");
-        ALIASES.put("ZOBIA", "Dr. Zubia Razzak");
+        // DR. ZUBIA RAZZAK
+        ALIASES.put("ZUBIA", "DR. ZUBIA RAZZAK");
+        ALIASES.put("ZOOBIA", "DR. ZUBIA RAZZAK");
+        ALIASES.put("ZOBIA", "DR. ZUBIA RAZZAK");
     }
 
     @PostConstruct
@@ -72,7 +83,7 @@ public class Services {
                 saveUser(admin);
             }
             initParameters();
-            initDefaultCOA(); // <-- ADD THIS LINE
+            initDefaultCOA();
         } catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -86,23 +97,20 @@ public class Services {
         }
     }
 
-    // Smart Auto-Gen: Only creates accounts if the ledger is totally empty
-    // Smart Auto-Gen: Takmeel-Style Simplified Clinic Ledger
-    // Smart Auto-Gen: Aligned Document IDs with numeric codes for bulletproof mapping
     private void initDefaultCOA() throws Exception {
         if (getCOA().isEmpty()) {
-            // 1. ASSETS (What the clinic owns)
+            // 1. ASSETS
             ChartOfAccount c1 = new ChartOfAccount(); c1.setId("1001"); c1.setCode("1001"); c1.setName("Cash Drawer (Front Desk)"); c1.setType("ASSET"); c1.setBalance(0.0); saveAccount(c1);
             ChartOfAccount c2 = new ChartOfAccount(); c2.setId("1002"); c2.setCode("1002"); c2.setName("Clinic Bank Account"); c2.setType("ASSET"); c2.setBalance(0.0); saveAccount(c2);
             ChartOfAccount c3 = new ChartOfAccount(); c3.setId("1200"); c3.setCode("1200"); c3.setName("Accounts Receivable (Unpaid Bills)"); c3.setType("ASSET"); c3.setBalance(0.0); saveAccount(c3);
 
-            // 2. LIABILITIES (What the clinic owes vendors)
+            // 2. LIABILITIES
             ChartOfAccount c4 = new ChartOfAccount(); c4.setId("2000"); c4.setCode("2000"); c4.setName("Accounts Payable"); c4.setType("LIABILITY"); c4.setBalance(0.0); saveAccount(c4);
 
             // 3. EQUITY
             ChartOfAccount c5 = new ChartOfAccount(); c5.setId("3000"); c5.setCode("3000"); c5.setName("Owner's Equity / Capital"); c5.setType("EQUITY"); c5.setBalance(0.0); saveAccount(c5);
 
-            // 4. REVENUE (Money generated)
+            // 4. REVENUE
             ChartOfAccount c6 = new ChartOfAccount(); c6.setId("4001"); c6.setCode("4001"); c6.setName("Dental Revenue"); c6.setType("REVENUE"); c6.setBalance(0.0); saveAccount(c6);
             ChartOfAccount c7 = new ChartOfAccount(); c7.setId("4002"); c7.setCode("4002"); c7.setName("Aesthetic Revenue"); c7.setType("REVENUE"); c7.setBalance(0.0); saveAccount(c7);
 
@@ -137,7 +145,6 @@ public class Services {
         for (QueryDocumentSnapshot doc : firestore.collection(COA).get().get().getDocuments()) {
             doc.getReference().delete();
         }
-        // Give the database a moment to clear, then instantly regenerate!
         Thread.sleep(1000);
         initDefaultCOA();
     }
@@ -205,17 +212,14 @@ public class Services {
         firestore.collection(PATIENTS).document(p.getId()).set(p);
     }
 
-    // --- UPDATED DELETE PATIENT WITH FIRESTORE MEMORY CLEARANCE ---
     public void deletePatient(String id) {
         firestore.collection(PATIENTS).document(id).delete();
     }
 
-    // --- NEW: DYNAMIC FIELD RE-MAPPING FOR HUMAN-ERROR EDITS ---
     public void updatePatientFields(String id, Map<String, String> data) throws Exception {
         Patient p = getPatientById(id);
         if (p == null) throw new Exception("Patient profile not found for the requested correction.");
 
-        // Re-map mutable demographic traits cleanly without altering ledger sheets
         if (data.containsKey("fullName") && data.get("fullName") != null) {
             p.setFullName(data.get("fullName").trim().toUpperCase());
         }
@@ -229,7 +233,6 @@ public class Services {
             p.setType(data.get("type").trim().toUpperCase());
         }
 
-        // Commit modifications back to Firestore document collection path
         firestore.collection(PATIENTS).document(p.getId()).set(p);
     }
 
@@ -242,11 +245,10 @@ public class Services {
             list.add(doc.toObject(Transaction.class));
         }
 
-        // BULLETPROOF SORTING: Handles null timestamps without crashing
         list.sort((t1, t2) -> {
             Long time1 = t1.getTimestamp() != null ? t1.getTimestamp() : 0L;
             Long time2 = t2.getTimestamp() != null ? t2.getTimestamp() : 0L;
-            return time1.compareTo(time2); // Ascending order (oldest to newest)
+            return time1.compareTo(time2);
         });
 
         return list;
@@ -259,32 +261,26 @@ public class Services {
         Patient p = getPatientById(t.getPatientId());
         if (p == null) throw new Exception("Cannot process transaction: Patient ID not found.");
 
-        // Update Patient's Ledger Balance
         double newBalance = p.getTotalBalance() + t.getCharges() - t.getReceived();
         t.setBalance(newBalance);
         p.setTotalBalance(newBalance);
 
         List<ChartOfAccount> coaList = getCOA();
 
-        // 1. Find A/R Account (1200)
         ChartOfAccount arAcc = coaList.stream().filter(c -> "1200".equals(c.getCode())).findFirst().orElse(null);
 
-        // 2. Find Revenue Account (4001 or 4002 based on Department)
         String revCode = "AESTHETIC".equalsIgnoreCase(p.getType()) ? "4002" : "4001";
         ChartOfAccount revAcc = coaList.stream().filter(c -> revCode.equals(c.getCode())).findFirst().orElse(null);
 
-        // 3. ULTIMATE FIX: Dynamically resolve the Asset Account from the ID sent by the frontend
         ChartOfAccount assetAcc = coaList.stream()
                 .filter(c -> c.getId().equals(t.getAssetAccountId()))
                 .findFirst()
                 .orElse(null);
 
-        // Safety Checks
         if (arAcc == null) throw new Exception("Accounting Error: Accounts Receivable (1200) missing.");
         if (revAcc == null) throw new Exception("Accounting Error: Revenue Account (" + revCode + ") missing.");
         if (assetAcc == null) throw new Exception("Accounting Error: Selected Asset account not found.");
 
-        // POST BILLING (JV)
         if (t.getCharges() > 0) {
             JournalVoucher billJv = new JournalVoucher();
             billJv.setVoucherType("JV");
@@ -296,7 +292,6 @@ public class Services {
             accountingEngine.postVoucher(billJv);
         }
 
-        // POST RECEIPT (BR) using the Dynamic Asset Account
         if (t.getReceived() > 0) {
             JournalVoucher recJv = new JournalVoucher();
             recJv.setVoucherType("BR");
@@ -308,7 +303,6 @@ public class Services {
             accountingEngine.postVoucher(recJv);
         }
 
-        // Commit state
         firestore.collection(PATIENTS).document(p.getId()).set(p);
         firestore.collection(TRANSACTIONS).document(t.getId()).set(t);
         return t.getId();
@@ -316,18 +310,28 @@ public class Services {
 
     // --- UTILITIES ---
     private String cleanConsultantName(String name) {
-        if (name == null || name.trim().isEmpty() || name.equalsIgnoreCase("null")) return "NOT ASSIGNED";
-        String upper = name.toUpperCase().trim();
-        String raw = upper.replaceAll("(?i)dr\\.?\\s*", "").trim();
-
-        // If the name is in our dictionary, return the beautifully formatted official name
-        if (ALIASES.containsKey(raw)) {
-            return ALIASES.get(raw);
+        if (name == null || name.trim().isEmpty() || name.equalsIgnoreCase("null")) {
+            return "NOT ASSIGNED";
         }
 
-        // Fallback for unlisted doctors (keeps them uppercase with DR.)
-        boolean hasDr = upper.contains("DR") || upper.contains("DR.");
-        return hasDr ? "DR. " + raw : raw;
+        // 1. Mandatory Slash Check: Replace everything containing "/" with Dr. Abdul Kareem Padhiar
+        if (name.contains("/")) {
+            return "DR. ABDUL KAREEM PADHIAR";
+        }
+
+        // 2. Normalize to uppercase
+        String upper = name.toUpperCase().trim();
+
+        // 3. Strip any existing "DR." or "DR " prefixes entirely so we can rebuild cleanly
+        String clean = upper.replaceAll("(?i)^DR\\.?\\s*", "").trim();
+
+        // 4. Dictionary Lookup
+        if (ALIASES.containsKey(clean)) {
+            return ALIASES.get(clean);
+        }
+
+        // 5. Fallback for new unlisted consultants (forces formatting to "DR. [NAME]")
+        return "DR. " + clean;
     }
 
     public String formatPhone(String phone) {
@@ -339,6 +343,7 @@ public class Services {
         return digits.length() == 10 ? "+92" + digits : "+" + digits;
     }
 
+    // --- SYSTEM OPERATIONS ---
     public List<Doctor> getDoctors() throws Exception {
         List<Doctor> list = new ArrayList<>();
         for (QueryDocumentSnapshot d : firestore.collection(DOCTORS).get().get().getDocuments()) list.add(d.toObject(Doctor.class));
@@ -348,10 +353,7 @@ public class Services {
 
     public String saveDoctor(Doctor d) throws Exception {
         if (d.getId() == null || d.getId().isEmpty()) d.setId(UUID.randomUUID().toString());
-
-        // Removed the .toUpperCase() here so official names look pretty!
         d.setName(d.getName().trim());
-
         firestore.collection(DOCTORS).document(d.getId()).set(d);
         return d.getId();
     }
@@ -371,6 +373,7 @@ public class Services {
         return getUsers().stream().filter(user -> user.getUsername().equalsIgnoreCase(u) && user.getPassword().equals(p)).findFirst().orElse(null);
     }
 
+    // --- EXCEL MIGRATION ---
     public void importFromExcel(MultipartFile file) throws Exception {
         Workbook workbook = new XSSFWorkbook(file.getInputStream());
         DataFormatter fmt = new DataFormatter();
@@ -387,33 +390,29 @@ public class Services {
 
                 Patient p = new Patient();
 
-                // --- STRATEGIC FIX: BULLETPROOF MR-NUMBER CONVERSION ---
                 String rawRegNo = fmt.formatCellValue(row.getCell(0)).trim();
                 String formattedRegNo;
 
                 if (rawRegNo.isEmpty()) {
-                    // Fallback for missing entries: Generate a clean random 5-digit string
                     formattedRegNo = "MR-" + (10000 + new Random().nextInt(90000));
                 } else {
-                    // Clean up prefixes if they are present in the raw sheet
                     String numericPart = rawRegNo.replace("PT-", "").replace("MR-", "").trim();
                     try {
-                        // Parse numerical string and explicitly pad out to 5 digits
                         int number = Integer.parseInt(numericPart);
                         formattedRegNo = "MR-" + String.format("%05d", number);
                     } catch (NumberFormatException e) {
-                        // Keep alphanumeric structure safe if row has an irregular identifier
                         formattedRegNo = "MR-" + numericPart;
                     }
                 }
 
                 p.setRegNo(formattedRegNo);
-                // -----------------------------------------------------
-
                 p.setDate(fmt.formatCellValue(row.getCell(1)));
                 p.setFullName(fmt.formatCellValue(row.getCell(2)));
                 p.setPhoneNumber(fmt.formatCellValue(row.getCell(3)));
-                p.setConsultantName(fmt.formatCellValue(row.getCell(4)));
+
+                // Clean the name during import using our unified engine
+                p.setConsultantName(cleanConsultantName(fmt.formatCellValue(row.getCell(4))));
+
                 p.setType(type);
 
                 savePatient(p);
@@ -454,7 +453,7 @@ public class Services {
         }
     }
 
-    // --- TREATMENT CATALOG ENGINE ---
+    // --- TREATMENT & EXPENSE ENGINE ---
     public List<Treatment> getTreatments() throws Exception {
         List<Treatment> list = new ArrayList<>();
         for (QueryDocumentSnapshot d : firestore.collection(TREATMENTS).get().get().getDocuments()) {
@@ -469,9 +468,10 @@ public class Services {
         return t.getId();
     }
 
-    // ==========================================
-    // OUTGOING EXPENSE & SETTLEMENT ENGINE
-    // ==========================================
+    public void deleteTreatment(String id) {
+        firestore.collection(TREATMENTS).document(id).delete();
+    }
+
     public List<Expense> getExpenses() throws Exception {
         List<Expense> list = new ArrayList<>();
         for (QueryDocumentSnapshot d : firestore.collection(EXPENSES).get().get().getDocuments()) {
@@ -480,10 +480,9 @@ public class Services {
         return list;
     }
 
-    // REPLACEMENT FOR Services.java
     public String payExpenseDirect(Expense e, String assetAccountId) throws Exception {
         if (e.getId() == null || e.getId().isEmpty()) e.setId(UUID.randomUUID().toString());
-        e.setStatus("PAID"); // Mark as paid immediately
+        e.setStatus("PAID");
 
         List<ChartOfAccount> coaList = getCOA();
         ChartOfAccount expAcc = coaList.stream().filter(c -> c.getId().equals(e.getAccountId())).findFirst().orElse(null);
@@ -491,13 +490,11 @@ public class Services {
 
         if (expAcc == null || assetAcc == null) throw new Exception("Invalid accounts (Expense or Asset) selected.");
 
-        // POST BP VOUCHER (Bank Payment) immediately
         JournalVoucher bp = new JournalVoucher();
         bp.setVoucherType("BP");
         bp.setVoucherDate(e.getDate());
         bp.setMemo("Direct Payment: " + e.getDescription());
 
-        // DR: Expense, CR: Asset (Cash/Bank)
         bp.getLines().add(accountingEngine.createLine(expAcc, e.getAmount(), 0.0, "Expense: " + e.getAccountName()));
         bp.getLines().add(accountingEngine.createLine(assetAcc, 0.0, e.getAmount(), "Direct Cash Out"));
 
@@ -517,7 +514,7 @@ public class Services {
         if (assetAcc == null || apAcc == null) throw new Exception("Required accounts (Asset/AP) missing.");
 
         JournalVoucher bp = new JournalVoucher();
-        bp.setVoucherType("BP"); // Bank Payment
+        bp.setVoucherType("BP");
         bp.setVoucherDate(java.time.LocalDate.now().toString());
         bp.setMemo("Settlement: " + e.getDescription());
 
@@ -530,13 +527,6 @@ public class Services {
         firestore.collection(EXPENSES).document(e.getId()).set(e);
     }
 
-    public void deleteTreatment(String id) {
-        firestore.collection(TREATMENTS).document(id).delete();
-    }
-
-    // ==========================================
-    // DATA MIGRATION ENGINE (WITH ZERO-PADDING)
-    // ==========================================
     public String migrateToMRNumbers() throws Exception {
         List<Patient> patients = getPatients();
         int updatedCount = 0;
@@ -546,26 +536,21 @@ public class Services {
             String currentReg = p.getRegNo();
             boolean needsUpdate = false;
 
-            // Rule 1: If it's completely empty, generate a brand new 5-digit MR- number
             if (currentReg == null || currentReg.trim().isEmpty()) {
                 p.setRegNo("MR-" + (10000 + rand.nextInt(90000)));
                 needsUpdate = true;
             }
-            // Rule 2: If it has the old PT- format, swap the prefix and format the numeric tail
             else if (currentReg.startsWith("PT-")) {
                 String numericPart = currentReg.replace("PT-", "").trim();
                 try {
-                    // Strip any accidental spacing, parse to integer, and pad with leading zeros up to 5 digits
                     int number = Integer.parseInt(numericPart);
                     String paddedNumber = String.format("%05d", number);
                     p.setRegNo("MR-" + paddedNumber);
                 } catch (NumberFormatException e) {
-                    // Fallback if the legacy tail contained non-numeric text modifications
                     p.setRegNo("MR-" + numericPart);
                 }
                 needsUpdate = true;
             }
-            // Rule 3: Accommodate raw short numeric strings (e.g., "123" -> "MR-00123")
             else if (currentReg.matches("\\d+")) {
                 int number = Integer.parseInt(currentReg);
                 String paddedNumber = String.format("%05d", number);
@@ -573,12 +558,11 @@ public class Services {
                 needsUpdate = true;
             }
 
-            // Commit the structural correction directly back to your Firestore collection
             if (needsUpdate) {
                 firestore.collection(PATIENTS).document(p.getId()).set(p);
                 updatedCount++;
             }
         }
-        return "Migration successfully completed! Formatted and updated " + updatedCount + " patient ledger accounts to the padded 'MR-XXXXX' framework.";
+        return "Migration successfully completed! Formatted and updated " + updatedCount + " patient ledger accounts.";
     }
 }

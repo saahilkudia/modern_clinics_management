@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Under Maintenance | Modern Clinics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --accent: #f59e0b;
+            --dark: #0f172a;
+            --gray: #64748b;
+            --card-bg: rgba(255, 255, 255, 0.96);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            color: var(--dark);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+        }
+        body::before {
+            width: 320px;
+            height: 320px;
+            background: rgba(2, 132, 199, 0.25);
+            top: 10%;
+            left: 15%;
+        }
+        body::after {
+            width: 360px;
+            height: 360px;
+            background: rgba(245, 158, 11, 0.15);
+            bottom: 10%;
+            right: 15%;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 45px 35px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+            text-align: center;
+        }
+
+        .logo-wrapper {
+            margin-bottom: 24px;
+            display: inline-block;
+        }
+
+        .logo-img {
+            max-height: 70px;
+            object-fit: contain;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: #fef3c7;
+            color: #92400e;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border: 1px solid #fde68a;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            animation: pulse 1.6s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+            }
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .desc {
+            font-size: 0.95rem;
+            color: var(--gray);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .contact-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 20px;
+            text-align: left;
+        }
+
+        .contact-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (min-width: 480px) {
+            .contact-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.88rem;
+            color: #334155;
+            background: #ffffff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .contact-item i {
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+        .contact-item a {
+            color: inherit;
+            text-decoration: none;
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .contact-item a:hover {
+            color: var(--primary);
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="logo-wrapper">
+            <img th:src="@{/images/Modern_Clinics_Logo_F.png}"
+                 src="/images/Modern_Clinics_Logo_F.png"
+                 alt="Modern Clinics"
+                 class="logo-img"
+                 onerror="this.src='/images/Modern_Clinics_Logo.png'">
+        </div>
+
+        <div>
+                <span class="status-pill">
+                    <span class="pulse-dot"></span> System Offline for Maintenance
+                </span>
+        </div>
+
+        <h1 th:text="${title != null ? title : 'Scheduled Maintenance'}">Scheduled Maintenance</h1>
+        <p class="desc" th:text="${message != null ? message : 'Modern Clinics is undergoing scheduled system updates. We will be back online shortly.'}">
+            Modern Clinics is undergoing scheduled system updates. We will be back online shortly.
+        </p>
+
+        <div class="contact-box">
+            <div class="contact-header">
+                <i class="fa-solid fa-headset"></i>
+                <span>Contact System Support / Developer</span>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <i class="fa-solid fa-envelope"></i>
+                    <a th:href="${contactEmail != null ? 'mailto:' + contactEmail : 'mailto:support@modernclinics.com'}"
+                       th:text="${contactEmail != null ? contactEmail : 'support@modernclinics.com'}">support@modernclinics.com</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fa-solid fa-phone"></i>
+                    <a th:href="${contactPhone != null ? 'tel:' + contactPhone : 'tel:+923001234567'}"
+                       th:text="${contactPhone != null ? contactPhone : '+92 300 1234567'}">+92 300 1234567</a>
+                </div>
+            </div>
+        </div>
+
+        <p class="footer-note">
+            &copy; 2026 Modern Clinics Management System. All rights reserved.
+        </p>
+    </div>
+</div>
+</body>
+</html>

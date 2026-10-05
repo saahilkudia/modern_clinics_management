@@ -1,2 +1,5 @@
 # Project exclude paths
-/target/
+/target/src/main/resources/serviceAccountKey.json
+
+src/main/resources/serviceAccountKey.json
+target/

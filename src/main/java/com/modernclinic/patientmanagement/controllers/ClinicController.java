@@ -4,15 +4,18 @@ import com.modernclinic.patientmanagement.models.*;
 import com.modernclinic.patientmanagement.models.FinanceModels.*;
 import com.modernclinic.patientmanagement.services.AccountingEngine;
 import com.modernclinic.patientmanagement.services.Services;
+import com.modernclinic.patientmanagement.services.ExcelExportService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/")
@@ -24,9 +27,9 @@ public class ClinicController {
     @Autowired
     private AccountingEngine accountingEngine;
 
-    // ==========================================
-    // 1. DASHBOARD & UI ROUTING
-    // ==========================================
+    @Autowired
+    private ExcelExportService excelExportService;
+
     @GetMapping
     public String index(Model model) throws Exception {
         return "index";
@@ -43,7 +46,6 @@ public class ClinicController {
         }
     }
 
-    // THE MISSING DASHBOARD SUMMARY ENDPOINT
     @GetMapping("/api/summary")
     @ResponseBody
     public ResponseEntity<?> getSummary() {
@@ -72,11 +74,6 @@ public class ClinicController {
         }
     }
 
-    // ==========================================
-    // 2. PATIENT CARD & LEDGER API
-    // ==========================================
-
-    // THE MISSING GET PATIENTS ENDPOINT
     @GetMapping("/api/patients")
     @ResponseBody
     public ResponseEntity<?> getAllPatients() {
@@ -111,7 +108,6 @@ public class ClinicController {
         services.deletePatient(id);
     }
 
-    // --- NEW: ENDPOINT TO PATCH REGISTRY HUMAN DATA-ENTRY ERRORS ---
     @PutMapping("/api/patients/{id}")
     @ResponseBody
     public ResponseEntity<?> updatePatientData(@PathVariable String id, @RequestBody Map<String, String> payload) {
@@ -134,10 +130,6 @@ public class ClinicController {
         }
     }
 
-    // ==========================================
-    // 3. DOUBLE-ENTRY ERP FINANCE API
-    // ==========================================
-
     @GetMapping("/api/finance/coa")
     @ResponseBody
     public ResponseEntity<?> getCOA() {
@@ -149,7 +141,6 @@ public class ClinicController {
     @ResponseBody
     public ResponseEntity<?> saveCOA(@RequestBody ChartOfAccount acc) {
         try {
-            // Force clean ID assignment as a structural string if null or numerical
             if (acc.getId() != null) {
                 acc.setId(String.valueOf(acc.getId()).trim());
             }
@@ -207,11 +198,6 @@ public class ClinicController {
         }
     }
 
-    // ==========================================
-    // 4. DOCTORS & UTILITIES API
-    // ==========================================
-
-    // THE MISSING GET DOCTORS ENDPOINT
     @GetMapping("/api/doctors")
     @ResponseBody
     public ResponseEntity<?> getAllDoctors() {
@@ -241,18 +227,29 @@ public class ClinicController {
         catch (Exception e) { return ResponseEntity.status(500).body("Error"); }
     }
 
+    // ==========================================
+    // FLAWLESS EXCEL EXPORT (FIXED 500 ERROR)
+    // ==========================================
     @GetMapping("/api/patients/export")
-    public ResponseEntity<byte[]> exportExcel() throws Exception {
-        byte[] data = services.exportToExcel();
-        HttpHeaders h = new HttpHeaders();
-        h.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
-        h.setContentDisposition(ContentDisposition.attachment().filename("Clinic_ERP_Data.xlsx").build());
-        return new ResponseEntity<>(data, h, HttpStatus.OK);
+    public ResponseEntity<InputStreamResource> exportExcel() {
+        try {
+            // Live data fetch
+            List<?> patients = services.getPatients();
+            List<?> vouchers = services.getVouchers();
+
+            ByteArrayInputStream stream = excelExportService.exportClinicDataToExcel(patients, vouchers);
+
+            HttpHeaders h = new HttpHeaders();
+            h.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+            h.setContentDisposition(ContentDisposition.attachment().filename("Modern_Clinic_Report.xlsx").build());
+
+            return new ResponseEntity<>(new InputStreamResource(stream), h, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
-    // ==========================================
-    // 5. TREATMENT CATALOG API
-    // ==========================================
     @GetMapping("/api/treatments")
     @ResponseBody
     public ResponseEntity<?> getTreatments() {
@@ -274,9 +271,6 @@ public class ClinicController {
         catch (Exception e) { return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage()); }
     }
 
-    // ==========================================
-    // SYSTEM & SETTINGS API
-    // ==========================================
     @DeleteMapping("/api/system/reset-coa")
     @ResponseBody
     public ResponseEntity<?> resetCOA() {
@@ -307,9 +301,6 @@ public class ClinicController {
         }
     }
 
-    // ==========================================
-    // EXPENSE & SETTLEMENT API
-    // ==========================================
     @GetMapping("/api/expenses")
     @ResponseBody
     public ResponseEntity<?> getExpenses() {
@@ -324,23 +315,17 @@ public class ClinicController {
         catch (Exception ex) { return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getMessage()); }
     }
 
-    // ==========================================
-    // PATIENT DOSSIER & TRANSACTIONS API
-    // ==========================================
     @PostMapping("/api/transactions")
     @ResponseBody
     public ResponseEntity<?> saveTransaction(@RequestBody Transaction t) {
         try {
             return ResponseEntity.ok(services.saveTransaction(t));
         } catch (Exception e) {
-            e.printStackTrace(); // Logs the exact error line to your IDE console
-
-            // Safety Net: Prevents Spring from returning a raw JSON block if the message is null
+            e.printStackTrace();
             String errorMsg = e.getMessage();
             if (errorMsg == null) {
                 errorMsg = "System Error: " + e.getClass().getSimpleName() + " occurred.";
             }
-
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMsg);
         }
     }
@@ -363,5 +348,30 @@ public class ClinicController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
+    }
+
+    @Value("${app.maintenance.title:System Maintenance}")
+    private String maintenanceTitle;
+
+    @Value("${app.maintenance.message:The system is temporarily offline for maintenance.}")
+    private String maintenanceMessage;
+
+    @Value("${app.maintenance.contact-name:Developer / Technical Support}")
+    private String contactName;
+
+    @Value("${app.maintenance.contact-email:developer@modernclinics.com}")
+    private String contactEmail;
+
+    @Value("${app.maintenance.contact-phone:+92 300 1234567}")
+    private String contactPhone;
+
+    @GetMapping("/maintenance")
+    public String maintenance(Model model) {
+        model.addAttribute("title", maintenanceTitle);
+        model.addAttribute("message", maintenanceMessage);
+        model.addAttribute("contactName", contactName);
+        model.addAttribute("contactEmail", contactEmail);
+        model.addAttribute("contactPhone", contactPhone);
+        return "maintenance";
     }
 }
